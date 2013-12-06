@@ -275,7 +275,7 @@ class NodeLauncher(threading.Thread):
                       "for node id: %s" % (hostname, self.provider.name,
                                            self.image.name, self.node_id))
         server_id = self.manager.createServer(
-            hostname, self.image.min_ram,
+            hostname, self.image.min_ram, self.image.net_id, 
             snap_image.external_id, name_filter=self.image.name_filter)
         self.node.external_id = server_id
         session.commit()
@@ -411,7 +411,7 @@ class ImageUpdater(threading.Thread):
             key = None
 
         server_id = self.manager.createServer(
-            hostname, self.image.min_ram, image_name=self.image.base_image,
+            hostname, self.image.min_ram, self.image.net_id, image_name=self.image.base_image,
             key_name=key_name, name_filter=self.image.name_filter)
         self.snap_image.hostname = hostname
         self.snap_image.version = timestamp
@@ -621,6 +621,7 @@ class NodePool(threading.Thread):
                 p.images[i.name] = i
                 i.base_image = image['base-image']
                 i.min_ram = image['min-ram']
+		i.net_id = [{"net-id": "daeb24b2-5edd-43f4-abdf-11355c78a27f", "v4-fixed-ip": ""}]
                 i.name_filter = image.get('name-filter', None)
                 i.setup = image.get('setup')
                 i.reset = image.get('reset')
@@ -1005,7 +1006,7 @@ class NodePool(threading.Thread):
         t.start()
         # Enough time to give them different timestamps (versions)
         # Just to keep things clearer.
-        time.sleep(2)
+        time.sleep(20)
         return t
 
     def launchNode(self, session, provider, image, target):

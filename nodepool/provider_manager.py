@@ -85,6 +85,7 @@ class NotFound(Exception):
 
 class CreateServerTask(Task):
     def main(self, client):
+	print self.args
         server = client.servers.create(**self.args)
         return server.id
 
@@ -128,6 +129,7 @@ class DeleteKeypairTask(Task):
 
 class CreateFloatingIPTask(Task):
     def main(self, client):
+	print self.args
         ip = client.floating_ips.create(**self.args)
         return dict(id=ip.id, ip=ip.ip)
 
@@ -162,6 +164,8 @@ class DeleteFloatingIPTask(Task):
 
 class CreateImageTask(Task):
     def main(self, client):
+	print self.args
+	time.sleep (60)
         # This returns an id
         return client.servers.create_image(**self.args)
 
@@ -274,7 +278,7 @@ class ProviderManager(TaskManager):
     def deleteKeypair(self, name):
         return self.submitTask(DeleteKeypairTask(name=name))
 
-    def createServer(self, name, min_ram, image_id=None,
+    def createServer(self, name, min_ram, net_id, image_id=None,
                      image_name=None, key_name=None, name_filter=None):
         if image_name:
             image_id = self.findImage(image_name)['id']
@@ -282,6 +286,8 @@ class ProviderManager(TaskManager):
         create_args = dict(name=name, image=image_id, flavor=flavor['id'])
         if key_name:
             create_args['key_name'] = key_name
+	if net_id:
+	    create_args['nics'] = net_id
 
         return self.submitTask(CreateServerTask(**create_args))
 
@@ -328,6 +334,7 @@ class ProviderManager(TaskManager):
         return self._waitForResource('image', image_id, timeout)
 
     def createFloatingIP(self, pool=None):
+	pool = 'net04_ext'
         return self.submitTask(CreateFloatingIPTask(pool=pool))
 
     def addFloatingIP(self, server_id, address):

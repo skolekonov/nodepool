@@ -1,38 +1,38 @@
-script-dir: .
+script-dir: /home/ubuntu/scripts/
 dburi: 'mysql://nodepool@localhost/nodepool'
 
 cron:
-  cleanup: '*/1 * * * *'
-  update-image: '14 2 * * *'
+  cleanup: '30 23 * * *'
+  update-image: '30 22 * * *'
 
 zmq-publishers:
   - tcp://localhost:8888
 
 gearman-servers:
-  - host: localhost
+  - host: 172.18.168.116
 
 providers:
-  - name: fake-provider
-    username: 'fake'
-    password: 'fake'
-    auth-url: 'fake'
-    project-id: 'fake'
-    max-servers: 96
+  - name: cz-lab
+    username: 'ci-user'
+    password: 'swordfish'
+    auth-url: 'http://172.18.168.2:5000/v2.0'
+    project-id: 'ci'
+    max-servers: 2
     images:
-      - name: nodepool-fake
-        base-image: 'Fake Precise'
-        min-ram: 8192
-        name-filter: 'Fake'
-        setup: prepare_node_devstack.sh
+      - name: ci-workers
+        base-image: 'ci-workers'
+        min-ram: 2048
+        setup: test.sh
+        private-key: '/home/ubuntu/src/nodepool/keys/mykey'
 
 targets:
-  - name: fake-jenkins
+  - name: test-jenkins
     jenkins:
-      url: https://jenkins.example.org/
-      user: fake
-      apikey: fake
+      url: http://172.18.168.116:8080/
+      user: admin
+      apikey: b52e2d9c0112ff7b862f3a4482d78cdb
     images:
-      - name: nodepool-fake
-        min-ready: 6
+      - name: ci-workers
+        min-ready: 2
         providers:
-          - name: fake-provider
+          - name: cz-lab
