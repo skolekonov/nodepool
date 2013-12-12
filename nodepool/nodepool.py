@@ -274,9 +274,12 @@ class NodeLauncher(threading.Thread):
         self.log.info("Creating server with hostname %s in %s from image %s "
                       "for node id: %s" % (hostname, self.provider.name,
                                            self.image.name, self.node_id))
-        server_id = self.manager.createServer(
-            hostname, self.image.min_ram, self.image.net_id, 
-            snap_image.external_id, name_filter=self.image.name_filter)
+        if self.provider.use_neutron == 'false':
+           self.provider.net_id = 'None'
+	server_id = self.manager.createServer(
+	    hostname, self.image.min_ram, self.provider.net_id, 
+	    snap_image.external_id, name_filter=self.image.name_filter)
+
         self.node.external_id = server_id
         session.commit()
 
@@ -289,7 +292,7 @@ class NodeLauncher(threading.Thread):
 
         ip = server.get('public_v4')
         if not ip and self.manager.hasExtension('os-floating-ips'):
-            ip = self.manager.addPublicIP(server_id)
+            ip = self.manager.addPublicIP(server_id, self.provider.floating_pool)
         if not ip:
             raise Exception("Unable to find public IP of server")
 
@@ -410,9 +413,16 @@ class ImageUpdater(threading.Thread):
             key_name = None
             key = None
 
-        server_id = self.manager.createServer(
-            hostname, self.image.min_ram, self.image.net_id, image_name=self.image.base_image,
-            key_name=key_name, name_filter=self.image.name_filter)
+        if self.provider.use_neutron == 'true':
+		server_id = self.manager.createServer(
+		    hostname, self.image.min_ram, self.provider.net_id, image_name=self.image.base_image,
+		    key_name=key_name, name_filter=self.image.name_filter)
+        else:
+                self.provider.net_id = 'None'
+                server_id = self.manager.createServer(
+                    hostname, self.image.min_ram, self.provider.net_id, image_name=self.image.base_image,
+                    key_name=key_name, name_filter=self.image.name_filter)
+
         self.snap_image.hostname = hostname
         self.snap_image.version = timestamp
         self.snap_image.server_external_id = server_id
@@ -427,7 +437,7 @@ class ImageUpdater(threading.Thread):
 
         ip = server.get('public_v4')
         if not ip and self.manager.hasExtension('os-floating-ips'):
-            ip = self.manager.addPublicIP(server_id)
+            ip = self.manager.addPublicIP(server_id, self.provider.floating_pool)
         if not ip:
             raise Exception("Unable to find public IP of server")
         server['public_v4'] = ip
@@ -614,6 +624,9 @@ class NodePool(threading.Thread):
             p.max_servers = provider['max-servers']
             p.rate = provider.get('rate', 1.0)
             p.boot_timeout = provider.get('boot-timeout', 60)
+            p.net_id = [{"net-id": provider.get('net-id', None), "v4-fixed-ip": ""}]
+	    p.floating_pool = provider.get('floating-pool', None)
+            p.use_neutron = str(provider.get('use-neutron', False)).lower()
             p.images = {}
             for image in provider['images']:
                 i = ProviderImage()
@@ -621,7 +634,7 @@ class NodePool(threading.Thread):
                 p.images[i.name] = i
                 i.base_image = image['base-image']
                 i.min_ram = image['min-ram']
-		i.net_id = [{"net-id": "daeb24b2-5edd-43f4-abdf-11355c78a27f", "v4-fixed-ip": ""}]
+#		i.net_id = [{"net-id": "daeb24b2-5edd-43f4-abdf-11355c78a27f", "v4-fixed-ip": ""}]
                 i.name_filter = image.get('name-filter', None)
                 i.setup = image.get('setup')
                 i.reset = image.get('reset')

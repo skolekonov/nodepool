@@ -85,7 +85,6 @@ class NotFound(Exception):
 
 class CreateServerTask(Task):
     def main(self, client):
-	print self.args
         server = client.servers.create(**self.args)
         return server.id
 
@@ -129,7 +128,6 @@ class DeleteKeypairTask(Task):
 
 class CreateFloatingIPTask(Task):
     def main(self, client):
-	print self.args
         ip = client.floating_ips.create(**self.args)
         return dict(id=ip.id, ip=ip.ip)
 
@@ -164,8 +162,7 @@ class DeleteFloatingIPTask(Task):
 
 class CreateImageTask(Task):
     def main(self, client):
-	print self.args
-	time.sleep (60)
+	time.sleep (30)
         # This returns an id
         return client.servers.create_image(**self.args)
 
@@ -286,7 +283,7 @@ class ProviderManager(TaskManager):
         create_args = dict(name=name, image=image_id, flavor=flavor['id'])
         if key_name:
             create_args['key_name'] = key_name
-	if net_id:
+	if net_id != 'None':
 	    create_args['nics'] = net_id
 
         return self.submitTask(CreateServerTask(**create_args))
@@ -333,15 +330,15 @@ class ProviderManager(TaskManager):
     def waitForImage(self, image_id, timeout=3600):
         return self._waitForResource('image', image_id, timeout)
 
-    def createFloatingIP(self, pool=None):
-	pool = 'net04_ext'
+    def createFloatingIP(self, pool):
+#	pool = 'net04_ext'
         return self.submitTask(CreateFloatingIPTask(pool=pool))
 
     def addFloatingIP(self, server_id, address):
         self.submitTask(AddFloatingIPTask(server=server_id,
                                           address=address))
 
-    def addPublicIP(self, server_id, pool=None):
+    def addPublicIP(self, server_id, pool):
         ip = self.createFloatingIP(pool)
         self.addFloatingIP(server_id, ip['ip'])
         for count in iterate_timeout(600, "ip to be added"):
